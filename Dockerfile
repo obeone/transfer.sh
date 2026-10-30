@@ -20,7 +20,12 @@ ARG PUID=5000 \
     PGID=5000 \
     RUNAS
 
-RUN mkdir -p /tmp/useradd /tmp/empty && \
+# /tmp/rootfs/tmp becomes /tmp in the final image; it needs the usual 1777
+# mode, otherwise the non-root user cannot write the temp files of uploads.
+# It is copied as a subdirectory because COPY keeps the mode of copied
+# entries but not of the source directory itself.
+RUN mkdir -p /tmp/useradd /tmp/rootfs/tmp && \
+    chmod 1777 /tmp/rootfs/tmp && \
     if [ ! -z "$RUNAS" ]; then \
     echo "${RUNAS}:x:${PUID}:${PGID}::/nonexistent:/sbin/nologin" >> /tmp/useradd/passwd && \
     echo "${RUNAS}:!:::::::" >> /tmp/useradd/shadow && \
@@ -32,7 +37,7 @@ LABEL maintainer="Andrea Spacca <andrea.spacca@gmail.com>"
 ARG RUNAS
 
 COPY --from=build /etc/mime.types /etc/mime.types
-COPY --from=build /tmp/empty /tmp
+COPY --from=build /tmp/rootfs/ /
 COPY --from=build /tmp/useradd/* /etc/
 COPY --from=build --chown=${RUNAS}  /go/bin/transfersh /go/bin/transfersh
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
